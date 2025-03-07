@@ -24,24 +24,6 @@
       user-select: none;
       position: relative;
     }
-    /* Фон города (скрыт до запуска аудио) */
-    .city-background {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: url('generated_image.jpg') no-repeat center/cover;
-      background-color: #111; /* fallback */
-      background-size: cover;
-      background-position: center;
-      opacity: 0;
-      transition: opacity 1s ease;
-      z-index: -1;
-    }
-    .show-city-background {
-      opacity: 1;
-    }
     /* Экран ошибки – отображается только при ошибке */
     .error-container {
       display: none;
