@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Аудиоплеер с пластинкой</title>
+  <style>
+    /* Общие стили */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #202124;
+      color: #e8eaed;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+    }
+    /* Фон города (скрыт до запуска аудио) */
+    .city-background {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('generated_image.jpg') no-repeat center/cover;
+      background-color: #111; /* fallback */
+      background-size: cover;
+      background-position: center;
+      opacity: 0;
+      transition: opacity 1s ease;
+      z-index: -1;
+    }
+    .show-city-background {
+      opacity: 1;
+    }
+    /* Экран ошибки – отображается только при ошибке */
+    .error-container {
+      display: none;
+      text-align: center;
+      position: absolute;
+      z-index: 10;
+    }
+    .error-container h1 {
+      font-size: 2rem;
+      margin-bottom: 20px;
+    }
+    .error-container button {
+      background-color: #8ab4f8;
+      color: #202124;
+      border: none;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .error-container button:hover {
+      background-color: #7aa3e0;
+    }
+    /* Контейнер плеера – виден по умолчанию */
+    .player-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      position: relative;
+      /* Единое движение всего блока */
+      animation: float 3s ease-in-out infinite;
+    }
+    /* Надпись "8 Марта" */
+    .holiday-texter {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #ffcc00;
+      margin-bottom: 20px;
+    }
+    /* Контейнер для обложки и пластинки */
+    .media-wrapper {
+      position: relative;
+      width: 230px;
+      height: 230px;
+      overflow: visible;
+    }
+    /* Обложка (файл) */
+    .folder {
+      width: 230px;
+      height: 230px;
+      background: url('file.png') no-repeat center/cover;
+      background-color: #555; /* fallback, если нет изображения */
+      border-radius: 15px;
+      box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.5);
+      position: relative;
+      z-index: 2;
+    }
+    /* Виниловая пластинка – позиционируется так, что её левая сторона совпадает с центром контейнера */
+    .vinyl-record {
+      width: 230px;
+      height: 230px;
+      position: absolute;
+      left: 50%; /* центр контейнера */
+      top: 50%;
+      transform: translate(0, -50%);
+      z-index: 1;
+      overflow: visible;
+    }
+    /* Внутренний элемент, который крутится */
+    .vinyl-spin {
+      width: 230px;
+      height: 230px;
+      position: relative;
+      animation: spin 10s linear infinite;
+      border-radius: 50%;
+      background-color: #000;
+    }
+    /* Борозды – полукруги с эффектом сужения */
+    .vinyl-groove {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%);
+      border-radius: 50%;
+    }
+    .groove1 {
+      width: 180px;
+      height: 180px;
+      border: 2px solid rgba(255,255,255,0.3);
+      animation: groove-spin 6s linear infinite;
+    }
+    .groove2 {
+      width: 140px;
+      height: 140px;
+      border: 2px solid rgba(255,255,255,0.4);
+      animation: groove-spin 8s linear infinite reverse;
+    }
+    .groove3 {
+      width: 100px;
+      height: 100px;
+      border: 2px solid rgba(255,255,255,0.5);
+      animation: groove-spin 10s linear infinite;
+    }
+    @keyframes groove-spin {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(-360deg); }
+    }
+    /* Центральный жёлтый круг */
+    .vinyl-center {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background-color: #ffcc00;
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+    }
+    /* Вращение пластинки */
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    /* Единая анимация покачивания (движение всего блока) */
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    /* Визуализатор */
+    .visualizer {
+      display: flex;
+      gap: 2px;
+      height: 60px;
+      align-items: flex-end;
+      width: 230px;
+      justify-content: center;
+      margin: 0 auto;
+    }
+    .visualizer span {
+      width: 6px;
+      background-color: #ffcc00;
+      transition: height 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      border-radius: 2px 2px 0 0;
+      margin: 0 1px;
+    }
+    .holiday-texter {
+      font-size: 2rem; /* Размер шрифта */
+      font-weight: bold; /* Жирный шрифт */
+      color: #ffcc00; /* Жёлтый цвет текста */
+      margin-bottom: 20px; /* Отступ снизу */
+    }
+  </style>
+</head>
+<body>
+  <!-- Экран ошибки (отображается только при ошибке воспроизведения) -->
+  <div class="error-container" id="errorContainer">
+    <h1>Произошла неизвестная ошибка</h1>
+    <button id="retryButton">Попробовать ещё раз</button>
+  </div>
+
+  <!-- Основной интерфейс плеера -->
+  <div class="player-container" id="playerContainer">
+    <!-- Надпись -->
+    <div class="holiday-texter">8 Марта</div>
+    <!-- Контейнер для обложки и пластинки -->
+    <div class="media-wrapper">
+      <!-- Обложка (файл) -->
+      <div class="folder"></div>
+      <!-- Пластинка -->
+      <div class="vinyl-record" id="vinylRecord">
+        <div class="vinyl-spin">
+          <div class="vinyl-groove groove1"></div>
+          <div class="vinyl-groove groove2"></div>
+          <div class="vinyl-groove groove3"></div>
+          <div class="vinyl-center"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Визуализатор -->
+    <div class="visualizer" id="visualizer">
+      <span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span>
+      <span></span><span></span>
+    </div>
+  </div>
+
+  <!-- Фон города -->
+  <div class="city-background" id="cityBackground"></div>
+
+  <!-- Аудио -->
+  <audio id="audioPlayer" src="sound.mp3" loop></audio>
+
+  <script>
+    const errorContainer = document.getElementById('errorContainer');
+    const playerContainer = document.getElementById('playerContainer');
+    const retryButton = document.getElementById('retryButton');
+    const audioPlayer = document.getElementById('audioPlayer');
+    const visualizer = document.getElementById('visualizer');
+    const cityBackground = document.getElementById('cityBackground');
+    const bars = visualizer.querySelectorAll('span');
+
+    let audioContext, analyser;
+
+    // Настройка аудиоконтекста и анализатора
+    function setupAudioContext() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        const source = audioContext.createMediaElementSource(audioPlayer);
+        source.connect(analyser);
+        analyser.connect(audioContext.destination);
+        analyser.fftSize = 256;
+      }
+    }
+
+    // Анимация визуализатора
+    function animateVisualizer() {
+      if (!analyser) return;
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(dataArray);
+      bars.forEach((bar, index) => {
+        const sinModifier = Math.sin(Date.now() * 0.002 + index * 0.2) * 3;
+        let height = (dataArray[index % analyser.frequencyBinCount] / 4.93) + sinModifier;
+        bar.style.height = `${Math.max(0, height)}px`;
+      });
+      requestAnimationFrame(animateVisualizer);
+    }
+
+    // При клике на кнопку "Попробовать ещё раз"
+    retryButton.addEventListener('click', async () => {
+      try {
+        setupAudioContext();
+        await audioPlayer.play();
+        errorContainer.style.display = 'none';
+        playerContainer.style.display = 'flex';
+        cityBackground.classList.add('show-city-background');
+        animateVisualizer();
+      } catch (error) {
+        console.error('Ошибка воспроизведения:', error);
+        alert('Не удалось воспроизвести аудио. Попробуйте ещё раз.');
+      }
+    });
+
+    // Инициализация: пытаемся сразу запустить аудио
+    (async function init() {
+      try {
+        setupAudioContext();
+        await audioPlayer.play();
+        // Если аудио запустилось, показываем плеер
+        errorContainer.style.display = 'none';
+        playerContainer.style.display = 'flex';
+        cityBackground.classList.add('show-city-background');
+        animateVisualizer();
+      } catch (error) {
+        console.error('Ошибка воспроизведения:', error);
+        // В случае ошибки показываем только экран ошибки
+        errorContainer.style.display = 'flex';
+        playerContainer.style.display = 'none';
+      }
+    })();
+  </script>
+</body>
+</html>
